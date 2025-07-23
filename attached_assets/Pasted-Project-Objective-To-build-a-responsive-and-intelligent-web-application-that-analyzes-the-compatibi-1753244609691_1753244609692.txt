@@ -1,0 +1,251 @@
+Project Objective:
+To build a responsive and intelligent web application that analyzes the compatibility between a candidate’s resume and a job description using Natural Language Processing (NLP) techniques. The system should provide a match score, a section-wise analysis, skill gap identification, and recommendations for improving the resume for better alignment with the job description.
+
+👩‍💻 Target Users:
+Job Seekers
+
+Employers/Recruiters
+
+Career Coaches
+
+HR Professionals
+
+🧱 Technology Stack:
+Frontend:
+React.js (UI framework)
+
+TailwindCSS / Material-UI (UI styling)
+
+Axios (for API calls)
+
+Backend:
+Node.js + Express.js
+
+Multer (for file upload)
+
+JSON Web Tokens (JWT) for authentication
+
+Database:
+MongoDB (NoSQL) for storing users, resumes, job descriptions, match history
+
+NLP Layer (can be integrated as a microservice or in Node backend):
+Python with SpaCy, NLTK, or Transformers (BERT, SBERT)
+
+OR JavaScript NLP libraries (if full MERN-only implementation is required) like natural, compromise, wink-nlp (limited but usable)
+
+🔐 User Roles:
+Admin: Manage users, view analytics
+
+Job Seeker: Upload resume and view compatibility results
+
+Employer: Upload job descriptions, view top matching resumes (future feature)
+
+🧰 Core Functional Modules:
+1. Authentication and User Management:
+Sign Up / Login (Email + Password)
+
+Google OAuth (optional)
+
+JWT-based session management
+
+Role-based access (Job Seeker vs Employer)
+
+2. Resume Upload Module:
+Upload PDF/DOCX/TXT or paste resume in text area
+
+File parsing using pdf-parse, docx, or textract
+
+Extract sections:
+
+Contact Info
+
+Skills
+
+Work Experience
+
+Education
+
+Certifications
+
+Projects / Keywords
+
+3. Job Description Upload Module:
+Paste or upload JD in text or document format
+
+Extract key components using NLP:
+
+Required Skills
+
+Responsibilities
+
+Preferred Experience
+
+Education & Certifications
+
+4. NLP-Based Compatibility Analysis:
+a. Text Preprocessing:
+Tokenization
+
+Lemmatization
+
+Stopword removal
+
+POS tagging (for skills & experience detection)
+
+b. Matching Algorithm:
+Skill Matching (direct and synonym-based)
+
+Experience Matching (years, role relevance)
+
+Education & Certification Match
+
+Keyword & Semantic Match using:
+
+TF-IDF + Cosine Similarity
+
+OR BERT embeddings for semantic comparison
+
+c. Scoring Metrics:
+Total Compatibility Score (out of 100)
+
+Section-wise scores:
+
+Skills Match %
+
+Experience Match %
+
+Education Match %
+
+Match Confidence (Low, Medium, High)
+
+5. Result Visualization:
+Display match score and badge
+
+Color-coded charts (Pie/Bar) for section match
+
+Highlight missing skills or mismatched items
+
+Recommendations for improving resume
+
+6. CSV Upload Module (Optional):
+Upload multiple resumes or JDs for batch analysis
+
+Show top matches and generate downloadable reports
+
+📊 Frontend UI Pages (React.js):
+Home/Landing Page
+
+Login/Signup Page
+
+Dashboard (Role-based)
+
+Resume Upload Page
+
+Job Description Upload Page
+
+Analysis Result Page
+
+Match History Page
+
+Settings/Profile Page
+
+🔁 Backend API Endpoints (Express.js):
+Method	Endpoint	Function
+POST	/api/auth/signup	Register new user
+POST	/api/auth/login	Login user
+POST	/api/resume/upload	Upload and parse resume
+POST	/api/jd/upload	Upload and parse JD
+POST	/api/analyze	Perform compatibility analysis
+GET	/api/analysis/history	Fetch previous matches
+DELETE	/api/analysis/:id	Delete previous result
+POST	/api/resume/bulk-upload	Upload CSV of resumes
+POST	/api/jd/bulk-upload	Upload CSV of job descriptions
+
+🗃️ Database Schema (MongoDB):
+Users Collection:
+json
+Copy
+Edit
+{
+  "_id": "ObjectId",
+  "email": "user@example.com",
+  "role": "jobseeker | employer",
+  "passwordHash": "hashed_password",
+  "createdAt": "Date"
+}
+Resumes Collection:
+json
+Copy
+Edit
+{
+  "_id": "ObjectId",
+  "userId": "ObjectId",
+  "rawText": "Extracted text",
+  "skills": ["React", "Node.js", "SQL"],
+  "experience": ["Software Engineer", "2 years"],
+  "education": ["BS Computer Science"],
+  "certifications": ["AWS Certified"],
+  "createdAt": "Date"
+}
+JobDescriptions Collection:
+json
+Copy
+Edit
+{
+  "_id": "ObjectId",
+  "userId": "ObjectId",
+  "title": "Frontend Developer",
+  "description": "JD full text",
+  "requiredSkills": ["React", "Redux"],
+  "experience": "2-4 years",
+  "education": "BSCS",
+  "createdAt": "Date"
+}
+AnalysisResults Collection:
+json
+Copy
+Edit
+{
+  "_id": "ObjectId",
+  "resumeId": "ObjectId",
+  "jobDescriptionId": "ObjectId",
+  "score": 86,
+  "sectionScores": {
+    "skills": 90,
+    "experience": 75,
+    "education": 100
+  },
+  "missingSkills": ["REST API"],
+  "recommendations": ["Add REST API experience"],
+  "createdAt": "Date"
+}
+🛡️ Security & Performance:
+Input sanitization (avoid XSS/Injection)
+
+File upload validation (size, format)
+
+Rate limiting for public endpoints
+
+Embedding caching (for BERT)
+
+📅 Future Enhancements:
+AI Resume Builder from JD
+
+Integration with LinkedIn/Indeed APIs
+
+Email notifications with results
+
+Resume Ranker for Employers
+
+Real-time feedback as users edit resume
+
+✅ Deliverables:
+MERN Stack Web Application with complete UI and backend
+
+NLP-based compatibility engine (JS or Python microservice)
+
+MongoDB with resume, JD, and match result storage
+
+CSV file support for batch operations
+
+Clean, exportable, interactive UI
