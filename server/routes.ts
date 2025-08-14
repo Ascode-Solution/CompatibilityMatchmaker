@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { storage } from "./storage";
+import { storage, MongoUser, MongoAnalysisResult, MongoJobDescription, MongoResume } from "./storage";
 import { authenticateToken, generateToken, type AuthRequest } from "./middleware/auth";
 import { fileParserService } from "./services/file-parser";
 import { nlpService } from "./services/nlp";
@@ -36,23 +36,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, role = "jobseeker" } = insertUserSchema.parse(req.body);
-      
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await MongoUser.findOne({ email });
       if (existingUser) {
         return res.status(400).json({ message: "User already exists" });
       }
-
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await storage.createUser({
+      const user = await MongoUser.create({
         email,
         password: hashedPassword,
         role,
       });
-
-      const token = generateToken(user.id);
-      res.json({ 
-        user: { id: user.id, email: user.email, role: user.role }, 
-        token 
+      const token = generateToken(user._id);
+      res.json({
+        user: { id: user._id, email: user.email, role: user.role },
+        token
       });
     } catch (error) {
       res.status(400).json({ message: "Invalid input data" });
@@ -62,21 +59,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
-      const user = await storage.getUserByEmail(email);
+      const user = await MongoUser.findOne({ email });
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-
-      const token = generateToken(user.id);
-      res.json({ 
-        user: { id: user.id, email: user.email, role: user.role }, 
-        token 
+      const token = generateToken(user._id);
+      res.json({
+        user: { id: user._id, email: user.email, role: user.role },
+        token
       });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -95,8 +89,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const parsedResume = await fileParserService.parseResumeFile(req.file.path, req.file.mimetype);
-      
-      const resume = await storage.createResume({
+
+      const resume = await MongoResume.create({
         userId: req.user!.id,
         filename: req.file.originalname,
         rawText: parsedResume.rawText,
@@ -118,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/resumes", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const resumes = await storage.getResumesByUserId(req.user!.id);
+      const resumes = await MongoResume.find({ userId: req.user!.id }).sort({ createdAt: -1 });
       res.json(resumes);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch resumes" });
@@ -127,14 +121,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/resume/:id", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const resumeId = parseInt(req.params.id);
-      const resume = await storage.getResume(resumeId);
-      
-      if (!resume || resume.userId !== req.user!.id) {
+      const resumeId = req.params.id;
+      const resume = await MongoResume.findById(resumeId);
+      if (!resume || resume.userId.toString() !== req.user!.id.toString()) {
         return res.status(404).json({ message: "Resume not found" });
       }
-
-      await storage.deleteResume(resumeId);
+      await MongoResume.findByIdAndDelete(resumeId);
       res.json({ message: "Resume deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete resume" });
@@ -155,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         jobData.requiredSkills = skills;
       }
 
-      const jobDescription = await storage.createJobDescription(jobData);
+      const jobDescription = await MongoJobDescription.create(jobData);
       res.json(jobDescription);
     } catch (error) {
       console.error('Job description creation error:', error);
@@ -165,7 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/job-descriptions", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const jobDescriptions = await storage.getJobDescriptionsByUserId(req.user!.id);
+      const jobDescriptions = await MongoJobDescription.find({ userId: req.user!.id }).sort({ createdAt: -1 });
       res.json(jobDescriptions);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch job descriptions" });
@@ -174,14 +166,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/job-description/:id", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const jobDescriptionId = parseInt(req.params.id);
-      const jobDescription = await storage.getJobDescription(jobDescriptionId);
-      
-      if (!jobDescription || jobDescription.userId !== req.user!.id) {
+      const jobDescriptionId = req.params.id;
+      const jobDescription = await MongoJobDescription.findById(jobDescriptionId);
+      if (!jobDescription || jobDescription.userId.toString() !== req.user!.id.toString()) {
         return res.status(404).json({ message: "Job description not found" });
       }
-
-      await storage.deleteJobDescription(jobDescriptionId);
+      await MongoJobDescription.findByIdAndDelete(jobDescriptionId);
       res.json({ message: "Job description deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete job description" });
@@ -193,14 +183,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { resumeId, jobDescriptionId } = req.body;
 
-      const resume = await storage.getResume(resumeId);
-      const jobDescription = await storage.getJobDescription(jobDescriptionId);
+      const resume = await MongoResume.findById(resumeId);
+      const jobDescription = await MongoJobDescription.findById(jobDescriptionId);
 
-      if (!resume || resume.userId !== req.user!.id) {
+      if (!resume || resume.userId.toString() !== req.user!.id.toString()) {
         return res.status(404).json({ message: "Resume not found" });
       }
 
-      if (!jobDescription || jobDescription.userId !== req.user!.id) {
+      if (!jobDescription || jobDescription.userId.toString() !== req.user!.id.toString()) {
         return res.status(404).json({ message: "Job description not found" });
       }
 
@@ -213,7 +203,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         jobDescription.requiredSkills || []
       );
 
-      const analysisResult = await storage.createAnalysisResult({
+      // Save analysis result in MongoDB
+      const analysisResult = await MongoAnalysisResult.create({
         userId: req.user!.id,
         resumeId,
         jobDescriptionId,
@@ -223,10 +214,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         educationScore: analysisScores.educationScore,
         missingSkills: analysisScores.missingSkills,
         recommendations: analysisScores.recommendations,
+        jobTitle: jobDescription.title,
+        company: jobDescription.company,
       });
 
       res.json({
-        ...analysisResult,
+        ...analysisResult.toObject(),
         jobTitle: jobDescription.title,
         company: jobDescription.company,
       });
@@ -238,21 +231,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/analysis/history", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const analysisResults = await storage.getAnalysisResultsByUserId(req.user!.id);
-      
-      // Enrich results with job description details
-      const enrichedResults = await Promise.all(
-        analysisResults.map(async (result) => {
-          const jobDescription = await storage.getJobDescription(result.jobDescriptionId);
-          return {
-            ...result,
-            jobTitle: jobDescription?.title || 'Unknown Position',
-            company: jobDescription?.company || 'Unknown Company',
-          };
-        })
-      );
-
-      res.json(enrichedResults);
+      // Find all analysis results for this user
+      const analysisResults = await MongoAnalysisResult.find({ userId: req.user!.id }).sort({ createdAt: -1 });
+      res.json(analysisResults);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch analysis history" });
     }

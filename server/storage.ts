@@ -12,6 +12,66 @@ import {
   type AnalysisResult,
   type InsertAnalysisResult,
 } from "@shared/schema";
+import mongoose from "mongoose";
+
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://instructorali123:ZLrhaYQgc6Ync@cluster0.xus1zye.mongodb.net/crm-system?retryWrites=true&w=majority&appName=Cluster0";
+
+// Connect to MongoDB
+mongoose.connect(MONGO_URI, { dbName: "crm-system" })
+  .then(() => console.log("Connected to MongoDB Atlas"))
+  .catch((err) => console.error("MongoDB connection error:", err));
+
+// User Schema
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, default: "jobseeker" },
+  createdAt: { type: Date, default: Date.now },
+});
+export const MongoUser = mongoose.models.User || mongoose.model("User", userSchema);
+
+// Analysis Result Schema
+const analysisResultSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  resumeId: { type: Number },
+  jobDescriptionId: { type: Number },
+  overallScore: { type: Number },
+  skillsScore: { type: Number },
+  experienceScore: { type: Number },
+  educationScore: { type: Number },
+  missingSkills: [{ type: String }],
+  recommendations: [{ type: String }],
+  jobTitle: { type: String },
+  company: { type: String },
+  createdAt: { type: Date, default: Date.now },
+});
+export const MongoAnalysisResult = mongoose.models.AnalysisResult || mongoose.model("AnalysisResult", analysisResultSchema);
+
+// Job Description Schema
+const jobDescriptionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  title: { type: String, required: true },
+  company: { type: String },
+  description: { type: String, required: true },
+  requiredSkills: [{ type: String }],
+  experienceLevel: { type: String },
+  education: { type: String },
+  createdAt: { type: Date, default: Date.now },
+});
+export const MongoJobDescription = mongoose.models.JobDescription || mongoose.model("JobDescription", jobDescriptionSchema);
+
+// Resume Schema
+const resumeSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  filename: { type: String },
+  rawText: { type: String },
+  skills: [{ type: String }],
+  experience: [{ type: String }],
+  education: [{ type: String }],
+  certifications: [{ type: String }],
+  createdAt: { type: Date, default: Date.now },
+});
+export const MongoResume = mongoose.models.Resume || mongoose.model("Resume", resumeSchema);
 
 export interface IStorage {
   // User methods

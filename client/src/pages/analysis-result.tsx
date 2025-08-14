@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { analysisApi } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
+import { jsPDF } from "jspdf";
 
 export default function AnalysisResult() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -46,7 +47,7 @@ export default function AnalysisResult() {
 
   const handleExport = () => {
     if (!analysis) return;
-    
+
     const exportData = {
       jobTitle: analysis.jobTitle,
       company: analysis.company,
@@ -61,14 +62,55 @@ export default function AnalysisResult() {
       recommendations: analysis.recommendations,
     };
 
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `resume-analysis-${analysis.jobTitle.replace(/\s+/g, '-').toLowerCase()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    // Create PDF
+    const doc = new jsPDF();
+    let y = 10;
+    doc.setFontSize(16);
+    doc.text(`Resume Analysis Report`, 10, y);
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(`Job Title: ${exportData.jobTitle}`, 10, y);
+    y += 8;
+    if (exportData.company) {
+      doc.text(`Company: ${exportData.company}`, 10, y);
+      y += 8;
+    }
+    doc.text(`Analysis Date: ${exportData.analysisDate}`, 10, y);
+    y += 8;
+    doc.text(`Overall Match Score: ${exportData.overallScore}%`, 10, y);
+    y += 10;
+    doc.text(`Section Scores:`, 10, y);
+    y += 8;
+    doc.text(`  Skills: ${exportData.sectionScores.skills}%`, 10, y);
+    y += 8;
+    doc.text(`  Experience: ${exportData.sectionScores.experience}%`, 10, y);
+    y += 8;
+    doc.text(`  Education: ${exportData.sectionScores.education}%`, 10, y);
+    y += 10;
+    doc.text(`Missing Skills:`, 10, y);
+    y += 8;
+    if (exportData.missingSkills && exportData.missingSkills.length > 0) {
+      exportData.missingSkills.forEach((skill: string) => {
+        doc.text(`- ${skill}`, 12, y);
+        y += 7;
+      });
+    } else {
+      doc.text(`None`, 12, y);
+      y += 7;
+    }
+    y += 3;
+    doc.text(`Recommendations:`, 10, y);
+    y += 8;
+    if (exportData.recommendations && exportData.recommendations.length > 0) {
+      exportData.recommendations.forEach((rec: string) => {
+        doc.text(`- ${rec}`, 12, y);
+        y += 7;
+      });
+    } else {
+      doc.text(`None`, 12, y);
+      y += 7;
+    }
+    doc.save(`resume-analysis-${analysis.jobTitle.replace(/\s+/g, '-').toLowerCase()}.pdf`);
   };
 
   if (isLoading) {
